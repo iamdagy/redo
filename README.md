@@ -6,7 +6,13 @@
 - **Stock ComfyUI.** Every workflow uses only native ComfyUI nodes that ship with Comfy Cloud. No custom node packs to install, so anyone can open, read and rerun them.
 - **Your footage stays yours.** Wherever possible the tools change only what you asked for and paste the original pixels back everywhere else.
 
-**Try it:** [redoapp.dev](https://redoapp.dev) · **Code:** [github.com/iamdagy/redo](https://github.com/iamdagy/redo) · Built for the Comfy Challenge.
+**Try it:** [redoapp.dev](https://redoapp.dev) · **Demo:** [video on X](https://x.com/iamdagy/status/2116118917773169036) · **Code:** [github.com/iamdagy/redo](https://github.com/iamdagy/redo) · Built for the Comfy Challenge.
+
+## Demo
+
+[![Redo — Fix a shot without reshooting it. Click to watch the 1:20 demo on X.](docs/demo-poster.jpg)](https://x.com/iamdagy/status/2116118917773169036)
+
+*Click the image to watch the 1:20 demo on X.*
 
 ## The tools
 

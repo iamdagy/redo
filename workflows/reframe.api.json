@@ -1,0 +1,492 @@
+{
+  "in_video": {
+    "class_type": "LoadVideo",
+    "inputs": {
+      "file": "input.mp4"
+    },
+    "_meta": {
+      "title": "IN:video"
+    }
+  },
+  "in_trim": {
+    "class_type": "Video Slice",
+    "inputs": {
+      "video": [
+        "in_video",
+        0
+      ],
+      "start_time": 0.0,
+      "duration": 5.0,
+      "strict_duration": false
+    },
+    "_meta": {
+      "title": "IN:trim (start, duration)"
+    }
+  },
+  "parts": {
+    "class_type": "GetVideoComponents",
+    "inputs": {
+      "video": [
+        "in_trim",
+        0
+      ]
+    }
+  },
+  "size": {
+    "class_type": "GetImageSize",
+    "inputs": {
+      "image": [
+        "parts",
+        0
+      ]
+    }
+  },
+  "n_frames": {
+    "class_type": "ComfyMathExpression",
+    "inputs": {
+      "expression": "max(9, int((a - 1) / 8) * 8 + 1)",
+      "values.a": [
+        "size",
+        2
+      ]
+    }
+  },
+  "frames": {
+    "class_type": "ImageFromBatch",
+    "inputs": {
+      "image": [
+        "parts",
+        0
+      ],
+      "batch_index": 0,
+      "length": [
+        "n_frames",
+        1
+      ]
+    }
+  },
+  "in_crop": {
+    "class_type": "ImageCrop",
+    "inputs": {
+      "image": [
+        "frames",
+        0
+      ],
+      "width": 1080,
+      "height": 1080,
+      "x": 420,
+      "y": 0
+    },
+    "_meta": {
+      "title": "IN:crop window (source px)"
+    }
+  },
+  "in_win": {
+    "class_type": "ResizeImageMaskNode",
+    "inputs": {
+      "input": [
+        "in_crop",
+        0
+      ],
+      "resize_type": "scale dimensions",
+      "resize_type.width": 544,
+      "resize_type.height": 544,
+      "resize_type.crop": "disabled",
+      "scale_method": "lanczos"
+    },
+    "_meta": {
+      "title": "IN:window at work size"
+    }
+  },
+  "in_canvas": {
+    "class_type": "EmptyImage",
+    "inputs": {
+      "width": 544,
+      "height": 960,
+      "batch_size": [
+        "n_frames",
+        1
+      ],
+      "color": 0
+    },
+    "_meta": {
+      "title": "IN:work canvas"
+    }
+  },
+  "in_place": {
+    "class_type": "ImageCompositeMasked",
+    "inputs": {
+      "destination": [
+        "in_canvas",
+        0
+      ],
+      "source": [
+        "in_win",
+        0
+      ],
+      "x": 0,
+      "y": 208,
+      "resize_source": false
+    },
+    "_meta": {
+      "title": "IN:window position (work)"
+    }
+  },
+  "ckpt": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "ltx-2.3-22b-distilled-fp8.safetensors"
+    }
+  },
+  "audio_vae": {
+    "class_type": "LTXVAudioVAELoader",
+    "inputs": {
+      "ckpt_name": "ltx-2.3-22b-distilled-fp8.safetensors"
+    }
+  },
+  "text_enc": {
+    "class_type": "LTXAVTextEncoderLoader",
+    "inputs": {
+      "text_encoder": "gemma_3_12B_it_fp4_mixed.safetensors",
+      "ckpt_name": "ltx-2.3-22b-distilled-fp8.safetensors",
+      "device": "default"
+    }
+  },
+  "p_lora": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+      "model": [
+        "ckpt",
+        0
+      ],
+      "lora_name": "ltx-2.3-22b-ic-lora-outpaint.safetensors",
+      "strength_model": 1.0
+    },
+    "_meta": {
+      "title": "IN:lora (preset)"
+    }
+  },
+  "iclora": {
+    "class_type": "GetICLoRAParameters",
+    "inputs": {
+      "iclora_model": [
+        "p_lora",
+        0
+      ]
+    }
+  },
+  "p_prompt": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "The same scene continues naturally beyond the original frame: same lighting, same camera, same style.",
+      "clip": [
+        "text_enc",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "IN:prompt"
+    }
+  },
+  "p_negative": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "blurry, out of focus, low contrast, washed out colors, noise, flicker, warping, distorted faces, extra limbs, text, watermark, borders, black bars",
+      "clip": [
+        "text_enc",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "IN:negative"
+    }
+  },
+  "cond": {
+    "class_type": "LTXVConditioning",
+    "inputs": {
+      "positive": [
+        "p_prompt",
+        0
+      ],
+      "negative": [
+        "p_negative",
+        0
+      ],
+      "frame_rate": [
+        "parts",
+        2
+      ]
+    }
+  },
+  "in_work": {
+    "class_type": "EmptyLTXVLatentVideo",
+    "inputs": {
+      "width": 544,
+      "height": 960,
+      "length": [
+        "n_frames",
+        1
+      ],
+      "batch_size": 1
+    },
+    "_meta": {
+      "title": "IN:work size"
+    }
+  },
+  "p_guide": {
+    "class_type": "LTXVAddGuide",
+    "inputs": {
+      "positive": [
+        "cond",
+        0
+      ],
+      "negative": [
+        "cond",
+        1
+      ],
+      "vae": [
+        "ckpt",
+        2
+      ],
+      "latent": [
+        "in_work",
+        0
+      ],
+      "image": [
+        "in_place",
+        0
+      ],
+      "frame_idx": 0,
+      "strength": 1.0,
+      "iclora_parameters": [
+        "iclora",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "IN:guide strength (preset)"
+    }
+  },
+  "audio_lat": {
+    "class_type": "LTXVEmptyLatentAudio",
+    "inputs": {
+      "frames_number": [
+        "n_frames",
+        1
+      ],
+      "frame_rate": [
+        "parts",
+        2
+      ],
+      "batch_size": 1,
+      "audio_vae": [
+        "audio_vae",
+        0
+      ]
+    }
+  },
+  "av": {
+    "class_type": "LTXVConcatAVLatent",
+    "inputs": {
+      "video_latent": [
+        "p_guide",
+        2
+      ],
+      "audio_latent": [
+        "audio_lat",
+        0
+      ]
+    }
+  },
+  "p_sampler": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "p_lora",
+        0
+      ],
+      "seed": 42,
+      "steps": 8,
+      "cfg": 1.0,
+      "sampler_name": "euler_ancestral",
+      "scheduler": "linear_quadratic",
+      "positive": [
+        "p_guide",
+        0
+      ],
+      "negative": [
+        "p_guide",
+        1
+      ],
+      "latent_image": [
+        "av",
+        0
+      ],
+      "denoise": 1.0
+    },
+    "_meta": {
+      "title": "IN:sampler (seed, steps)"
+    }
+  },
+  "split": {
+    "class_type": "LTXVSeparateAVLatent",
+    "inputs": {
+      "av_latent": [
+        "p_sampler",
+        0
+      ]
+    }
+  },
+  "crop_guides": {
+    "class_type": "LTXVCropGuides",
+    "inputs": {
+      "positive": [
+        "p_guide",
+        0
+      ],
+      "negative": [
+        "p_guide",
+        1
+      ],
+      "latent": [
+        "split",
+        0
+      ]
+    }
+  },
+  "decode": {
+    "class_type": "VAEDecodeTiled",
+    "inputs": {
+      "samples": [
+        "crop_guides",
+        2
+      ],
+      "vae": [
+        "ckpt",
+        2
+      ],
+      "tile_size": 768,
+      "overlap": 64,
+      "temporal_size": 4096,
+      "temporal_overlap": 64
+    }
+  },
+  "in_out": {
+    "class_type": "ResizeImageMaskNode",
+    "inputs": {
+      "input": [
+        "decode",
+        0
+      ],
+      "resize_type": "scale dimensions",
+      "resize_type.width": 1080,
+      "resize_type.height": 1920,
+      "resize_type.crop": "disabled",
+      "scale_method": "lanczos"
+    },
+    "_meta": {
+      "title": "IN:output size"
+    }
+  },
+  "in_mask": {
+    "class_type": "SolidMask",
+    "inputs": {
+      "value": 1.0,
+      "width": 1080,
+      "height": 1080
+    },
+    "_meta": {
+      "title": "IN:window mask (source px)"
+    }
+  },
+  "p_feather": {
+    "class_type": "FeatherMask",
+    "inputs": {
+      "mask": [
+        "in_mask",
+        0
+      ],
+      "left": 24,
+      "top": 24,
+      "right": 24,
+      "bottom": 24
+    },
+    "_meta": {
+      "title": "IN:seam feather (preset)"
+    }
+  },
+  "in_crop_out": {
+    "class_type": "ResizeImageMaskNode",
+    "inputs": {
+      "input": [
+        "in_crop",
+        0
+      ],
+      "resize_type": "scale dimensions",
+      "resize_type.width": 1080,
+      "resize_type.height": 1080,
+      "resize_type.crop": "disabled",
+      "scale_method": "lanczos"
+    },
+    "_meta": {
+      "title": "IN:original at output size"
+    }
+  },
+  "in_paste": {
+    "class_type": "ImageCompositeMasked",
+    "inputs": {
+      "destination": [
+        "in_out",
+        0
+      ],
+      "source": [
+        "in_crop_out",
+        0
+      ],
+      "x": 0,
+      "y": 420,
+      "resize_source": false,
+      "mask": [
+        "p_feather",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "IN:paste-back position (output px)"
+    }
+  },
+  "out_video_mux": {
+    "class_type": "CreateVideo",
+    "inputs": {
+      "images": [
+        "in_paste",
+        0
+      ],
+      "fps": [
+        "parts",
+        2
+      ],
+      "audio": [
+        "parts",
+        1
+      ]
+    }
+  },
+  "out_video": {
+    "class_type": "SaveVideo",
+    "inputs": {
+      "video": [
+        "out_video_mux",
+        0
+      ],
+      "filename_prefix": "open-edit-video/reframe",
+      "format": "mp4",
+      "format.codec": "h264",
+      "format.codec.encoding": "re-encode",
+      "format.codec.encoding.crf": 16
+    },
+    "_meta": {
+      "title": "OUT:video"
+    }
+  }
+}

@@ -1,0 +1,86 @@
+{
+  "$comment": "Herramientas de Open Edit Video y sus valores de partida. La interfaz de cada una vive en components/panels.tsx; secondsPer5s es el tiempo aproximado en Comfy Cloud para 5 s de video.",
+  "tools": [
+    {
+      "id": "reframe",
+      "name": "Reframe",
+      "short": "Change the shape. Keep your footage.",
+      "model": "LTX-2.3 outpaint",
+      "tagline": "Change the shape of your video. Your footage stays as it is; the AI only paints the new space.",
+      "secondsPer5s": 60,
+      "defaults": {
+        "aspect": "9:16",
+        "keep": 0.5,
+        "position": 0.5,
+        "positionY": 0.5,
+        "prompt": "",
+        "quality": "normal",
+        "feather": 24,
+        "seed": 42
+      }
+    },
+    {
+      "id": "remove",
+      "name": "Remove",
+      "short": "Click it. It's gone.",
+      "model": "SAM 3 + LTX-2.3 in-outpainting",
+      "tagline": "Click what should disappear. SAM 3 finds it and follows it through the clip; LTX repaints only that area, so the rest of the shot stays exactly as it was.",
+      "secondsPer5s": 60,
+      "defaults": {
+        "what": "",
+        "loraStrength": 1.2,
+        "quality": "normal",
+        "seed": 42,
+        "pointX": "",
+        "pointY": ""
+      }
+    },
+    {
+      "id": "smoothcut",
+      "name": "Smooth Cut",
+      "short": "Cut the pauses. Hide the jumps.",
+      "model": "LTX-2.3 first/last frame",
+      "tagline": "Cut the pauses out of someone talking, and blend each cut so it doesn't jump.",
+      "secondsPer5s": 0,
+      "defaults": {
+        "minSilence": 0.6,
+        "keepAir": 0.15,
+        "threshold": -35,
+        "bridge": "17",
+        "bridges": "on",
+        "seed": 42,
+        "sensitivity": 0.35
+      }
+    },
+    {
+      "id": "upscale",
+      "name": "Upscale",
+      "short": "Bigger and sharper, up to 4K.",
+      "model": "SeedVR2",
+      "tagline": "Make your video bigger and sharper, up to 4K.",
+      "secondsPer5s": 75,
+      "defaults": {
+        "scale": 2,
+        "model": "3B fast",
+        "color": "lab",
+        "seed": 42
+      }
+    },
+    {
+      "id": "cutout",
+      "name": "Remove background",
+      "short": "Your subject on a flat color.",
+      "model": "BiRefNet",
+      "tagline": "Put the subject on a flat color, ready to drop onto any background.",
+      "secondsPer5s": 25,
+      "defaults": {
+        "background": "#00B140"
+      }
+    }
+  ],
+  "limits": {
+    "defaultSeconds": 5,
+    "maxSeconds": 30,
+    "maxLongSide": 1920
+  }
+}

@@ -1,0 +1,200 @@
+{
+  "in_video": {
+    "class_type": "LoadVideo",
+    "inputs": {
+      "file": "input.mp4"
+    },
+    "_meta": {
+      "title": "IN:video"
+    }
+  },
+  "in_trim": {
+    "class_type": "Video Slice",
+    "inputs": {
+      "video": [
+        "in_video",
+        0
+      ],
+      "start_time": 0.0,
+      "duration": 5.0,
+      "strict_duration": false
+    },
+    "_meta": {
+      "title": "IN:trim (start, duration)"
+    }
+  },
+  "parts": {
+    "class_type": "GetVideoComponents",
+    "inputs": {
+      "video": [
+        "in_trim",
+        0
+      ]
+    }
+  },
+  "in_scale": {
+    "class_type": "ResizeImageMaskNode",
+    "inputs": {
+      "input": [
+        "parts",
+        0
+      ],
+      "resize_type": "scale by multiplier",
+      "resize_type.multiplier": 2.0,
+      "scale_method": "lanczos"
+    },
+    "_meta": {
+      "title": "IN:scale (x2, x3, x4)"
+    }
+  },
+  "dit": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "seedvr2_3b_int8_convrot.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "vae": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "seedvr2_ema_vae_fp16.safetensors"
+    }
+  },
+  "pre": {
+    "class_type": "SeedVR2Preprocess",
+    "inputs": {
+      "resized_images": [
+        "in_scale",
+        0
+      ]
+    }
+  },
+  "enc": {
+    "class_type": "VAEEncodeTiled",
+    "inputs": {
+      "pixels": [
+        "pre",
+        0
+      ],
+      "vae": [
+        "vae",
+        0
+      ],
+      "tile_size": 512,
+      "overlap": 128,
+      "temporal_size": 64,
+      "temporal_overlap": 8
+    }
+  },
+  "cond": {
+    "class_type": "SeedVR2Conditioning",
+    "inputs": {
+      "model": [
+        "dit",
+        0
+      ],
+      "vae_conditioning": [
+        "enc",
+        0
+      ]
+    }
+  },
+  "p_sampler": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "dit",
+        0
+      ],
+      "seed": 42,
+      "steps": 1,
+      "cfg": 1.0,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "positive": [
+        "cond",
+        0
+      ],
+      "negative": [
+        "cond",
+        1
+      ],
+      "latent_image": [
+        "enc",
+        0
+      ],
+      "denoise": 1.0
+    },
+    "_meta": {
+      "title": "IN:sampler (seed)"
+    }
+  },
+  "dec": {
+    "class_type": "VAEDecodeTiled",
+    "inputs": {
+      "samples": [
+        "p_sampler",
+        0
+      ],
+      "vae": [
+        "vae",
+        0
+      ],
+      "tile_size": 512,
+      "overlap": 128,
+      "temporal_size": 64,
+      "temporal_overlap": 8
+    }
+  },
+  "p_color": {
+    "class_type": "SeedVR2PostProcessing",
+    "inputs": {
+      "images": [
+        "dec",
+        0
+      ],
+      "original_resized_images": [
+        "in_scale",
+        0
+      ],
+      "color_correction_method": "lab"
+    },
+    "_meta": {
+      "title": "IN:color correction (preset)"
+    }
+  },
+  "out_video_mux": {
+    "class_type": "CreateVideo",
+    "inputs": {
+      "images": [
+        "p_color",
+        0
+      ],
+      "fps": [
+        "parts",
+        2
+      ],
+      "audio": [
+        "parts",
+        1
+      ]
+    }
+  },
+  "out_video": {
+    "class_type": "SaveVideo",
+    "inputs": {
+      "video": [
+        "out_video_mux",
+        0
+      ],
+      "filename_prefix": "open-edit-video/upscale",
+      "format": "mp4",
+      "format.codec": "h264",
+      "format.codec.encoding": "re-encode",
+      "format.codec.encoding.crf": 16
+    },
+    "_meta": {
+      "title": "OUT:video"
+    }
+  }
+}

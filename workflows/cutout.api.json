@@ -1,0 +1,177 @@
+{
+  "in_video": {
+    "class_type": "LoadVideo",
+    "inputs": {
+      "file": "input.mp4"
+    },
+    "_meta": {
+      "title": "IN:video"
+    }
+  },
+  "in_trim": {
+    "class_type": "Video Slice",
+    "inputs": {
+      "video": [
+        "in_video",
+        0
+      ],
+      "start_time": 0.0,
+      "duration": 5.0,
+      "strict_duration": false
+    },
+    "_meta": {
+      "title": "IN:trim (start, duration)"
+    }
+  },
+  "parts": {
+    "class_type": "GetVideoComponents",
+    "inputs": {
+      "video": [
+        "in_trim",
+        0
+      ]
+    }
+  },
+  "size": {
+    "class_type": "GetImageSize",
+    "inputs": {
+      "image": [
+        "parts",
+        0
+      ]
+    }
+  },
+  "bg_model": {
+    "class_type": "LoadBackgroundRemovalModel",
+    "inputs": {
+      "bg_removal_name": "birefnet.safetensors"
+    }
+  },
+  "matte": {
+    "class_type": "RemoveBackground",
+    "inputs": {
+      "bg_removal_model": [
+        "bg_model",
+        0
+      ],
+      "image": [
+        "parts",
+        0
+      ]
+    }
+  },
+  "in_bg": {
+    "class_type": "EmptyImage",
+    "inputs": {
+      "width": [
+        "size",
+        0
+      ],
+      "height": [
+        "size",
+        1
+      ],
+      "batch_size": [
+        "size",
+        2
+      ],
+      "color": 45376
+    },
+    "_meta": {
+      "title": "IN:background color (preset)"
+    }
+  },
+  "comp": {
+    "class_type": "ImageCompositeMasked",
+    "inputs": {
+      "destination": [
+        "in_bg",
+        0
+      ],
+      "source": [
+        "parts",
+        0
+      ],
+      "x": 0,
+      "y": 0,
+      "resize_source": false,
+      "mask": [
+        "matte",
+        0
+      ]
+    }
+  },
+  "out_video_mux": {
+    "class_type": "CreateVideo",
+    "inputs": {
+      "images": [
+        "comp",
+        0
+      ],
+      "fps": [
+        "parts",
+        2
+      ],
+      "audio": [
+        "parts",
+        1
+      ]
+    }
+  },
+  "out_video": {
+    "class_type": "SaveVideo",
+    "inputs": {
+      "video": [
+        "out_video_mux",
+        0
+      ],
+      "filename_prefix": "open-edit-video/cutout",
+      "format": "mp4",
+      "format.codec": "h264",
+      "format.codec.encoding": "re-encode",
+      "format.codec.encoding.crf": 16
+    },
+    "_meta": {
+      "title": "OUT:video"
+    }
+  },
+  "matte_img": {
+    "class_type": "MaskToImage",
+    "inputs": {
+      "mask": [
+        "matte",
+        0
+      ]
+    }
+  },
+  "out_matte_mux": {
+    "class_type": "CreateVideo",
+    "inputs": {
+      "images": [
+        "matte_img",
+        0
+      ],
+      "fps": [
+        "parts",
+        2
+      ]
+    }
+  },
+  "out_matte": {
+    "class_type": "SaveVideo",
+    "inputs": {
+      "video": [
+        "out_matte_mux",
+        0
+      ],
+      "filename_prefix": "open-edit-video/cutout-matte",
+      "format": "mp4",
+      "format.codec": "h264",
+      "format.codec.encoding": "re-encode",
+      "format.codec.encoding.crf": 16
+    },
+    "_meta": {
+      "title": "OUT:matte"
+    }
+  }
+}

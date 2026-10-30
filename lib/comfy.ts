@@ -1,6 +1,7 @@
 import { join, resolve } from "node:path";
 import { readFileSync, existsSync } from "node:fs";
 import { Comfy, type Job } from "@comfyorg/sdk";
+import { timingSafeEqual } from "node:crypto";
 import type { Input } from "./plan";
 import { UserError } from "./safety.ts";
 
@@ -57,7 +58,39 @@ export function comfy(userKey?: string | null) {
 }
 
 /** La clave del visitante que viene en la cabecera, o la que se usó para enviar ese trabajo. */
-export const keyFor = (req: Request, jobId?: string) => req.headers.get("x-comfy-key")?.trim() || (jobId ? jobKeys.get(jobId) : undefined) || null;
+/**
+ * Acceso de invitado (por ejemplo, para el jurado): quien abre la app con `?access=<OEV_ACCESS_CODE>` usa la clave
+ * del servidor (COMFY_API_KEY) sin poner la suya, hasta OEV_ACCESS_MAX_RUNS trabajos. Sin el código, nada cambia.
+ */
+export function hasGuestAccess(req: Request) {
+  const code = process.env.OEV_ACCESS_CODE?.trim();
+  const sent = req.headers.get("x-oev-access")?.trim();
+  if (!code || !sent || !apiKeyFromEnv()) return false;
+  const a = Buffer.from(code), b = Buffer.from(sent);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
+const guest = (globalThis as unknown as { __oevGuestRuns?: { n: number } }).__oevGuestRuns ??= { n: 0 };
+(globalThis as unknown as { __oevGuestRuns?: { n: number } }).__oevGuestRuns = guest;
+
+/** Cuenta un trabajo nuevo hecho con el acceso de invitado; al llegar al tope, se pide la clave propia. */
+export function useGuestRun() {
+  const max = Number(process.env.OEV_ACCESS_MAX_RUNS ?? 40);
+  if (guest.n >= max) throw new KeyError("need_key", "The guest access has used all its runs. Add your own Comfy API key to keep going.");
+  guest.n++;
+}
+
+/** La clave para esta petición: la del visitante, la del trabajo ya enviado, o la del servidor con acceso de invitado. */
+export const keyFor = (req: Request, jobId?: string) =>
+  req.headers.get("x-comfy-key")?.trim() || (jobId ? jobKeys.get(jobId) : undefined) || (hasGuestAccess(req) ? apiKeyFromEnv() : null) || null;
+
+/** Para crear trabajos: igual que keyFor, pero si la clave sale del acceso de invitado, cuenta la corrida. */
+export function keyForNewJob(req: Request) {
+  const own = req.headers.get("x-comfy-key")?.trim();
+  if (own) return own;
+  if (hasGuestAccess(req)) { useGuestRun(); return apiKeyFromEnv(); }
+  return null;
+}
 
 export function publicJob(job: Job): PublicJob {
   return {

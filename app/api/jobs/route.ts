@@ -1,4 +1,4 @@
-import { submit, publicJob, keyFor, explainError } from "@/lib/comfy";
+import { submit, publicJob, keyForNewJob, explainError } from "@/lib/comfy";
 import { planReframe, planRemove, planUpscale, planCutout, type Meta, type Settings } from "@/lib/plan";
 import tools from "@/presets/tools.json";
 import { prepareClip } from "@/lib/prep";
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
     const job = await submit(tool, [{
       node: "in_video", field: "file", bytes: prepared.bytes,
       filename: "input.mp4", contentType: "video/mp4",
-    }], plan.inputs, keyFor(req));
+    }], plan.inputs, keyForNewJob(req));
     return Response.json({ job: publicJob(job), geometry: "geometry" in plan ? plan.geometry : null });
   } catch (e) {
     const { status, body } = explainError(e);

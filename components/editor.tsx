@@ -62,11 +62,23 @@ export default function Editor({ config }: { config: Config }) {
   const [hasKey, setHasKey] = useState(false);
   const [serverKey, setServerKey] = useState<boolean | null>(null);
   const [keyDialog, setKeyDialog] = useState<{ reason: KeyReason; thenRun: boolean } | null>(null);
+  // Acceso de invitado: `?access=<código>` se guarda en el navegador y se quita de la barra de direcciones.
+  const accessRef = useRef("");
   useEffect(() => {
+    try {
+      const url = new URL(window.location.href);
+      const code = url.searchParams.get("access");
+      if (code) { localStorage.setItem("oev.access", code); url.searchParams.delete("access"); window.history.replaceState(null, "", url.pathname + url.search + url.hash); }
+      accessRef.current = localStorage.getItem("oev.access") ?? "";
+    } catch { /* sin almacenamiento: no hay acceso de invitado */ }
     keyRef.current = loadKey(); setHasKey(Boolean(keyRef.current));
-    fetch("/api/config").then((r) => r.json()).then((c) => setServerKey(Boolean(c.serverKey))).catch(() => setServerKey(false));
+    fetch("/api/config", { headers: accessRef.current ? { "x-oev-access": accessRef.current } : {} })
+      .then((r) => r.json()).then((c) => setServerKey(Boolean(c.serverKey))).catch(() => setServerKey(false));
   }, []);
-  const auth = (): Record<string, string> => (keyRef.current ? { "x-comfy-key": keyRef.current } : {});
+  const auth = (): Record<string, string> => ({
+    ...(keyRef.current ? { "x-comfy-key": keyRef.current } : {}),
+    ...(accessRef.current ? { "x-oev-access": accessRef.current } : {}),
+  });
 
   const s = settings[toolId];
   const set = (k: string, v: string | number) => setSettings((all) => ({ ...all, [toolId]: { ...all[toolId], [k]: v } }));

@@ -68,7 +68,7 @@ npm run build
 npm start -- -p 3000          # listens on 127.0.0.1; put it behind a reverse proxy or a tunnel to publish it
 ```
 
-`.env.example` lists every setting. On a public server keep `OEV_REQUIRE_USER_KEY=1` so each visitor uses their own Comfy API key and the server stores none. For private use you can set `COMFY_API_KEY` instead.
+`.env.example` lists every setting. On a public server keep `OEV_REQUIRE_USER_KEY=1` so each visitor uses their own Comfy API key and the server stores none. For private use you can set `COMFY_API_KEY` instead. To let specific people try it without a key (for example, judges), set `COMFY_API_KEY`, `OEV_ACCESS_CODE` and `OEV_ACCESS_MAX_RUNS`, and share `https://your-site/?access=<code>`.
 
 Open http://127.0.0.1:3000. With `OEV_REQUIRE_USER_KEY=1`, the app asks for a Comfy API key the first time you run a tool and explains where to get one ([platform.comfy.org/profile/api-keys](https://platform.comfy.org/profile/api-keys)). The key stays in the visitor's browser and is only used to send their jobs. The account needs Comfy Cloud credits.
 
